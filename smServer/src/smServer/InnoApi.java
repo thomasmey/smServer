@@ -47,8 +47,8 @@ public class InnoApi implements ShortMessageSender {
 			return;
 		}
 		
-		String senderNo = String.format("%011.0f", message.getSenderNo());
-		String receiverNo = String.format("%011.0f", message.getReceiverNo());
+		String senderNo = "0" + message.getSenderNo();
+		String receiverNo = "0" + message.getReceiverNo();
 		String[] parms = new String[2];
 		parms[0] = senderNo;
 		parms[1] = receiverNo;
