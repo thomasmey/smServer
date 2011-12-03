@@ -1,0 +1,14 @@
+# this is an user unit file. put it in "pkg-config systemd --variable=systemduserunitdir"
+# start from your user with "systemctl --user start smServer.service"
+
+[Unit]
+Description=ShortMessage Server
+After=network.target
+
+[Service]
+Type=simple
+Environment=CLASSPATH=/usr/share/java/smServer.jar
+ExecStart=/usr/bin/java smServer.Controller
+
+[Install]
+WantedBy=multi-user.target
