@@ -20,8 +20,8 @@ public class ShortMessage {
 	}
 
 	void setReceiverNo(BigDecimal receiverNo) {
-		if(receiverNo.compareTo(new BigDecimal("99999999999")) > 0 )
-			throw new NumberFormatException();
+//		if(receiverNo.compareTo(new BigDecimal("99999999999")) > 0 )
+//			throw new NumberFormatException();
 		this.receiverNo = receiverNo;
 	}
 

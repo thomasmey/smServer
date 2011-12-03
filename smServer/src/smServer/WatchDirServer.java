@@ -81,10 +81,8 @@ public class WatchDirServer {
 		if(rn != null && textMessage != null) {
 			BigDecimal receiverNo = new BigDecimal(rn);
 			ShortMessage message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
+			message.setSendDate(sendDate);
 
-			if(sendDate != null) {
-				message.setSendDate(sendDate);
-			}
 			sms.send(message);
 			if(sm.delete() == false) {
 				log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
