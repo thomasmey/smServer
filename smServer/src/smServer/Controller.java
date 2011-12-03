@@ -19,11 +19,13 @@ public class Controller {
 	 */
 	public static void main(String[] args) throws FileNotFoundException, IOException, InterruptedException {
 
+		// always use users home directory till systemd get's fixed for user unit files with WorkingDirectory
+		String baseDir = System.getProperty("user.home") + File.separator + "smServer";
 		Logger log = Logger.getLogger("appLog");
 
 		// setup InnoApi
 		Properties props = new Properties();
-		props.load(new FileReader("AppSender.properties"));
+		props.load(new FileReader(baseDir + File.separator + "AppSender.properties"));
 
 		senderNo = new BigDecimal(props.getProperty("senderNo"));
 
@@ -31,8 +33,8 @@ public class Controller {
 		String password = props.getProperty("password");
 
 		ShortMessageSender sms = new InnoApi(log, username, password);
-		String watchDir = System.getProperty("user.dir") + (props.getProperty("watchPath") == null ? "" : File.separator + props.getProperty("watchPath"));
-		WatchDirServer server = new WatchDirServer(sms, log, watchDir);
+
+		WatchDirServer server = new WatchDirServer(sms, log, baseDir);
 		
 		server.run();
 	}
