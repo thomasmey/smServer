@@ -11,4 +11,4 @@ Environment=CLASSPATH=/usr/share/java/smServer.jar
 ExecStart=/usr/bin/java smServer.Controller
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
