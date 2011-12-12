@@ -18,14 +18,14 @@ public class WatchDirServer {
 	private long timeout;
 	private FilenameFilter fnFilter;
 	
-	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir) {
+	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir, long timeout) {
 
 		this.log = log;
 		this.sms = sms;
 		this.watchDir = new File(watchDir);
 		this.msgProps = new Properties();
 		this.fnFilter = new FilenamePostfixFilter("sm");
-		this.timeout = 5000;
+		this.timeout = timeout;
 	}
 
 	void run() throws InterruptedException, IOException {

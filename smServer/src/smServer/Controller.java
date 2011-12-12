@@ -31,10 +31,11 @@ public class Controller {
 
 		String username = props.getProperty("username");
 		String password = props.getProperty("password");
+		Long timeout  = Long.valueOf(props.getProperty("timeout"));
 
 		ShortMessageSender sms = new InnoApi(log, username, password);
 
-		WatchDirServer server = new WatchDirServer(sms, log, baseDir);
+		WatchDirServer server = new WatchDirServer(sms, log, baseDir, timeout);
 		
 		server.run();
 	}
