@@ -22,7 +22,7 @@ public class InnoApi implements ShortMessageSender {
 	private Logger log;
 
 	InnoApi (Logger log, String userName, String password) {
-		encoding = "UTF-8";
+		encoding = "ISO-8859-15";
 		setUserName(userName);
 		setPassword(password);
 		this.log=log;
