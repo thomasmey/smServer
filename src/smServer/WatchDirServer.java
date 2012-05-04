@@ -68,7 +68,6 @@ public class WatchDirServer implements Runnable {
 				return;
 			}
 
-			log.log(Level.INFO,"Got watchkey!");
 			if(curentKey != null && curentKey.isValid()) {
 				List<WatchEvent<?>> currentEvents = curentKey.pollEvents();
 				for(WatchEvent<?> ev: currentEvents) {
