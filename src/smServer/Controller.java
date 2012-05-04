@@ -19,24 +19,34 @@ public class Controller {
 	 */
 	public static void main(String[] args) throws FileNotFoundException, IOException, InterruptedException {
 
-		// always use users home directory till systemd get's fixed for user unit files with WorkingDirectory
-		String baseDir = System.getProperty("user.home") + File.separator + "smServer";
+		// FIXME: always use users home directory till systemd get's fixed for user unit files with WorkingDirectory
+		String baseDir = System.getProperty("user.home") + File.separatorChar + "smServer";
+
 		Logger log = Logger.getLogger("appLog");
 
 		// setup InnoApi
 		Properties props = new Properties();
-		props.load(new FileReader(baseDir + File.separator + "AppSender.properties"));
+		props.load(new FileReader(baseDir + File.separatorChar + "AppSender.properties"));
 
 		senderNo = new BigDecimal(props.getProperty("senderNo"));
 
 		String username = props.getProperty("username");
 		String password = props.getProperty("password");
-		Long timeout  = Long.valueOf(props.getProperty("timeout"));
 
 		ShortMessageSender sms = new InnoApi(log, username, password);
 
-		WatchDirServer server = new WatchDirServer(sms, log, baseDir, timeout);
-		
+		// start sending threads
+		Runnable sendingRunnable = (Runnable) sms;
+
+		int noSendingThreads = Integer.valueOf(props.getProperty("noSendingThreads"));
+		Thread sendThread [] = new Thread[noSendingThreads+1];
+		for (int i = 1; i < noSendingThreads; i++) {
+			sendThread[i] = new Thread(sendingRunnable);
+			sendThread[i].start();
+		}
+
+		// start directory watcher
+		WatchDirServer server = new WatchDirServer(sms, log, baseDir);
 		server.run();
 	}
 

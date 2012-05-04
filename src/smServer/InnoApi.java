@@ -11,15 +11,39 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class InnoApi implements ShortMessageSender {
+public class InnoApi implements ShortMessageSender, Runnable {
 
 	private String userName;
 	private String password;
 	private String encoding;
 	private Logger log;
+	private static final Queue<ShortMessage> messageQueue = new LinkedList<ShortMessage>();
+	
+	@Override
+	public void run() {
+
+		log.log(Level.INFO, "Starting sending thread {0}.", Thread.currentThread().getName());
+
+		ShortMessage sm = null;
+		while(true) {
+			synchronized (messageQueue) {
+				try {
+					messageQueue.wait();
+				} catch (InterruptedException e) {
+					return;
+				}
+				sm = messageQueue.poll();
+			}
+
+			assert(sm!=null);
+			send0(sm);
+		}
+	}
 
 	InnoApi (Logger log, String userName, String password) {
 		encoding = "ISO-8859-15";
@@ -29,7 +53,13 @@ public class InnoApi implements ShortMessageSender {
 	}
 	
 	public void send(ShortMessage message) {
-		
+		synchronized (messageQueue) {
+			messageQueue.offer(message);
+			messageQueue.notify();
+		}
+	}
+
+	private void send0(ShortMessage message) {
 		URI apiUri = null;
 		String userName = null;
 		String passWord = null;

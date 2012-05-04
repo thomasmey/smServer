@@ -4,65 +4,118 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.Reader;
 import java.math.BigDecimal;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class WatchDirServer {
+public class WatchDirServer implements Runnable {
 
-	private File watchDir;
+	private Path watchDir;
 	private Properties msgProps;
 	private Logger log;
 	private ShortMessageSender sms;
-	private long timeout;
 	private FilenameFilter fnFilter;
 	
-	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir, long timeout) {
+	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir) {
 
 		this.log = log;
 		this.sms = sms;
-		this.watchDir = new File(watchDir);
+		this.watchDir = Paths.get(watchDir);
 		this.msgProps = new Properties();
 		this.fnFilter = new FilenamePostfixFilter("sm");
-		this.timeout = timeout;
 	}
 
-	void run() throws InterruptedException, IOException {
-		
-		File[] messages;
+	public void run() {
 
 		assert(log!=null);
 		assert(sms!=null);
 
 		log.log(Level.INFO,"Server started.");
+		if(!watchDir.toFile().exists()) {
+			log.log(Level.SEVERE,"working directory {0} is missing!", watchDir.toString());
+			return;
+		}
+
+		processExistingFiles();
+		
+		FileSystem fs = watchDir.getFileSystem();
+		WatchService watcher;
+		try {
+			watcher = fs.newWatchService();
+			watchDir.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,StandardWatchEventKinds.ENTRY_MODIFY);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
+
 		while(true) {
-			
-			messages = null;
-			if(!watchDir.exists()) {
-				log.log(Level.SEVERE,"working directory {0} is missing!", watchDir.getAbsoluteFile());
-				throw new FileNotFoundException();
-			} else {
-				messages = watchDir.listFiles(fnFilter);
+
+			WatchKey curentKey = null;
+			try {
+				curentKey = watcher.take();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				return;
 			}
-			
-			if(messages!= null) {
-				for(File sm: messages) {
-					if(sm.isFile()) {
-						try {
-							processFile(sm);
-						} catch (FileNotFoundException e) {
-							log.log(Level.SEVERE,"File not found!", e);
-							throw e;
-						} catch (IOException e) {
-							log.log(Level.SEVERE,"IO error!", e);
-							throw e;
+
+			log.log(Level.INFO,"Got watchkey!");
+			if(curentKey != null && curentKey.isValid()) {
+				List<WatchEvent<?>> currentEvents = curentKey.pollEvents();
+				for(WatchEvent<?> ev: currentEvents) {
+					if(ev.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+						Path currentPath =  (Path) ev.context();
+						File sm = null;
+
+						/*
+						 * FIXME: This doesn't work as java returns:
+						 * working directory + file name and not
+						 * watch directory   + file name
+						 * It's a feature not a bug?!
+						 * sm = currentPath.toFile(); 
+						 */
+						sm = watchDir.resolve(currentPath).toFile();
+
+						// only process files with certain file name
+						if(fnFilter.accept(null, sm.getName())) {
+							try {
+								processFile(sm);
+							} catch (FileNotFoundException ex) {
+								log.log(Level.SEVERE,"File not found!", ex);
+								return;
+							} catch (IOException ex) {
+								log.log(Level.SEVERE,"IO error!", ex);
+								return;
+							}
 						}
 					}
 				}
 			}
+			curentKey.reset();
+		}
+	}
 
-			Thread.sleep(timeout);
+	private void processExistingFiles() {
+		File files[] = watchDir.toFile().listFiles(fnFilter);
+		for(File sm : files) {
+			try {
+				processFile(sm);
+			} catch (FileNotFoundException ex) {
+				log.log(Level.SEVERE,"File not found!", ex);
+				return;
+			} catch (IOException ex) {
+				log.log(Level.SEVERE,"IO error!", ex);
+				return;
+			}
 		}
 	}
 
@@ -70,8 +123,13 @@ public class WatchDirServer {
 		
 		assert(sm!=null);
 
+		log.log(Level.FINE,"Sending file {0}", sm.getName());
+
+		if(!sm.exists())
+			return;
+
 		msgProps.clear();
-		FileReader fr = new FileReader(sm);
+		Reader fr = new FileReader(sm);
 		msgProps.load(fr);
 		String rn = msgProps.getProperty("receiverNo");
 		String textMessage = msgProps.getProperty("text");
