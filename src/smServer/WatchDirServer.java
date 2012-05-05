@@ -130,20 +130,23 @@ public class WatchDirServer implements Runnable {
 		msgProps.clear();
 		Reader fr = new FileReader(sm);
 		msgProps.load(fr);
-		String rn = msgProps.getProperty("receiverNo");
+		String rnSplit[] = msgProps.getProperty("receiverNo").split(",");
 		String textMessage = msgProps.getProperty("text");
 		String sendDate = msgProps.getProperty("termin");
 		fr.close();
 
-		if(rn != null && textMessage != null) {
-			BigDecimal receiverNo = new BigDecimal(rn);
-			ShortMessage message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
-			message.setSendDate(sendDate);
-
-			sms.send(message);
-			if(sm.delete() == false) {
-				log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
-				throw new IOException();
+		for(String rn: rnSplit) {
+	
+			if(rn != null && textMessage != null) {
+				BigDecimal receiverNo = new BigDecimal(rn);
+				ShortMessage message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
+				message.setSendDate(sendDate);
+	
+				sms.send(message);
+				if(sm.delete() == false) {
+					log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
+					throw new IOException();
+				}
 			}
 		}
 	}
