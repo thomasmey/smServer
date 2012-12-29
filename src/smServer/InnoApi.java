@@ -1,4 +1,5 @@
 package smServer;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -18,12 +19,22 @@ import java.util.logging.Logger;
 
 public class InnoApi implements ShortMessageSender, Runnable {
 
+	private final String encoding;
+	private final Logger log;
+
 	private String userName;
 	private String password;
-	private String encoding;
-	private Logger log;
+
 	private static final Queue<ShortMessage> messageQueue = new LinkedList<ShortMessage>();
-	
+
+	InnoApi (Logger log, String userName, String password) {
+		this.encoding = "ISO-8859-15";
+		this.log = log;
+
+		setUserName(userName);
+		setPassword(password);
+	}
+
 	@Override
 	public void run() {
 
@@ -31,6 +42,10 @@ public class InnoApi implements ShortMessageSender, Runnable {
 
 		ShortMessage sm = null;
 		while(true) {
+
+			if(Thread.currentThread().isInterrupted())
+				return;
+
 			synchronized (messageQueue) {
 				try {
 					messageQueue.wait();
@@ -40,18 +55,12 @@ public class InnoApi implements ShortMessageSender, Runnable {
 				sm = messageQueue.poll();
 			}
 
-			assert(sm!=null);
+			assert sm != null;
 			send0(sm);
 		}
 	}
 
-	InnoApi (Logger log, String userName, String password) {
-		encoding = "ISO-8859-15";
-		setUserName(userName);
-		setPassword(password);
-		this.log=log;
-	}
-	
+	/** sends a SMS, by putting it on the Queue */
 	public void send(ShortMessage message) {
 		synchronized (messageQueue) {
 			messageQueue.offer(message);
@@ -60,11 +69,13 @@ public class InnoApi implements ShortMessageSender, Runnable {
 	}
 
 	private void send0(ShortMessage message) {
+
 		URI apiUri = null;
 		String userName = null;
 		String passWord = null;
 		String text = null;
 		String sendDate = message.getSendDate();
+
 		try {
 			userName = URLEncoder.encode(this.userName, encoding);
 			passWord = URLEncoder.encode(this.password, encoding);
@@ -79,12 +90,9 @@ public class InnoApi implements ShortMessageSender, Runnable {
 		
 		String senderNo = "0" + message.getSenderNo();
 		String receiverNo = "0" + message.getReceiverNo();
-		String[] parms = new String[2];
-		parms[0] = senderNo;
-		parms[1] = receiverNo;
 		int msgType = 4;
 
-		log.log(Level.INFO, "Sending SM from {0} to {1}", parms);
+		log.log(Level.INFO, "Sending SM from {0} to {1}", new String[] {senderNo, receiverNo});
 
 		try {
 			String uri = "https://www.innosend.de/gateway/sms.php" + "?id=" + userName +
@@ -102,7 +110,7 @@ public class InnoApi implements ShortMessageSender, Runnable {
 			log.log(Level.SEVERE, "Error while creating api URI!",e);
 			return;
 		}
-		
+
 		URL apiUrl;
 		try {
 			apiUrl = apiUri.toURL();
@@ -110,7 +118,7 @@ public class InnoApi implements ShortMessageSender, Runnable {
 			log.log(Level.SEVERE, "Error while creating api URL!",e);
 			return;
 		}
-		
+
 		InputStream is;
 		byte[] content = new byte[16];
 		URLConnection conn = null;
@@ -127,7 +135,7 @@ public class InnoApi implements ShortMessageSender, Runnable {
 				cs=Charset.forName(encoding);
 			else
 				cs=Charset.forName("US-ASCII");
-			
+
 			String rc = cs.decode(ByteBuffer.wrap(Arrays.copyOfRange(content, 0, len))).toString();
 			status = Integer.valueOf(rc);
 			log.log(Level.INFO, "SMS send. Return code {0}", status);
@@ -138,19 +146,11 @@ public class InnoApi implements ShortMessageSender, Runnable {
 		}
 	}
 
-	String getUserName() {
-		return userName;
-	}
-
-	void setUserName(String userName) {
+	private void setUserName(String userName) {
 		this.userName = userName;
 	}
 
-	String getPassword() {
-		return password;
-	}
-
-	void setPassword(String password) {
+	private void setPassword(String password) {
 		this.password = password;
 	}
 

@@ -1,0 +1,2 @@
+smServer is a program, that watches a given directory for new files.
+If a new file is detected in the "sm" Property format, a SMS is generated and send via the web SMS provider.

@@ -1,4 +1,5 @@
 package smServer;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -39,8 +40,8 @@ public class Controller {
 		Runnable sendingRunnable = (Runnable) sms;
 
 		int noSendingThreads = Integer.valueOf(props.getProperty("noSendingThreads"));
-		Thread sendThread [] = new Thread[noSendingThreads+1];
-		for (int i = 1; i < noSendingThreads; i++) {
+		Thread sendThread [] = new Thread[noSendingThreads];
+		for (int i = 0; i < sendThread.length; i++) {
 			sendThread[i] = new Thread(sendingRunnable);
 			sendThread[i].start();
 		}
@@ -48,6 +49,10 @@ public class Controller {
 		// start directory watcher
 		WatchDirServer server = new WatchDirServer(sms, log, baseDir);
 		server.run();
-	}
 
+		// server ended, stop sending threads
+		for(Thread t : sendThread) {
+			t.interrupt();
+		}
+	}
 }

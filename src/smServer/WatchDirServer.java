@@ -1,4 +1,5 @@
 package smServer;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -20,12 +21,12 @@ import java.util.logging.Logger;
 
 public class WatchDirServer implements Runnable {
 
-	private Path watchDir;
-	private Properties msgProps;
-	private Logger log;
-	private ShortMessageSender sms;
-	private FilenameFilter fnFilter;
-	
+	private final Logger log;
+	private final ShortMessageSender sms;
+	private final Properties msgProps;
+	private final FilenameFilter fnFilter;
+	private final Path watchDir;
+
 	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir) {
 
 		this.log = log;
@@ -37,8 +38,8 @@ public class WatchDirServer implements Runnable {
 
 	public void run() {
 
-		assert(log!=null);
-		assert(sms!=null);
+		assert log != null;
+		assert sms != null;
 
 		log.log(Level.INFO,"Server started.");
 		if(!watchDir.toFile().exists()) {
@@ -47,29 +48,35 @@ public class WatchDirServer implements Runnable {
 		}
 
 		processExistingFiles();
-		
+
 		FileSystem fs = watchDir.getFileSystem();
 		WatchService watcher;
 		try {
 			watcher = fs.newWatchService();
 			watchDir.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,StandardWatchEventKinds.ENTRY_MODIFY);
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.log(Level.SEVERE, "Failed to register watch dir service", e);
 			return;
 		}
 
 		while(true) {
 
-			WatchKey curentKey = null;
+			if(Thread.currentThread().isInterrupted())
+				return;
+
+			WatchKey currentKey = null;
 			try {
-				curentKey = watcher.take();
+				currentKey = watcher.take();
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+//				log.log(Level.INFO, "WatchDirServer was interrupted", e);
 				return;
 			}
 
-			if(curentKey != null && curentKey.isValid()) {
-				List<WatchEvent<?>> currentEvents = curentKey.pollEvents();
+			if(currentKey == null)
+				continue;
+
+			if(currentKey.isValid()) {
+				List<WatchEvent<?>> currentEvents = currentKey.pollEvents();
 				for(WatchEvent<?> ev: currentEvents) {
 					if(ev.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
 						Path currentPath =  (Path) ev.context();
@@ -90,16 +97,15 @@ public class WatchDirServer implements Runnable {
 								processFile(sm);
 							} catch (FileNotFoundException ex) {
 								log.log(Level.SEVERE,"File not found!", ex);
-								return;
 							} catch (IOException ex) {
 								log.log(Level.SEVERE,"IO error!", ex);
-								return;
+								Thread.currentThread().interrupt();
 							}
 						}
 					}
 				}
 			}
-			curentKey.reset();
+			currentKey.reset();
 		}
 	}
 
@@ -110,7 +116,6 @@ public class WatchDirServer implements Runnable {
 				processFile(sm);
 			} catch (FileNotFoundException ex) {
 				log.log(Level.SEVERE,"File not found!", ex);
-				return;
 			} catch (IOException ex) {
 				log.log(Level.SEVERE,"IO error!", ex);
 				return;
@@ -119,8 +124,8 @@ public class WatchDirServer implements Runnable {
 	}
 
 	private void processFile(File sm) throws FileNotFoundException, IOException {
-		
-		assert(sm!=null);
+
+		assert sm != null;
 
 		log.log(Level.FINE,"Sending file {0}", sm.getName());
 
@@ -136,12 +141,18 @@ public class WatchDirServer implements Runnable {
 		fr.close();
 
 		for(String rn: rnSplit) {
-	
+
 			if(rn != null && textMessage != null) {
 				BigDecimal receiverNo = new BigDecimal(rn);
-				ShortMessage message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
+				ShortMessage message = null;
+				try {
+					message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
+				} catch(Exception e) {
+					log.log(Level.SEVERE,"Couldn't create SMS object!", e);
+					return;
+				}
 				message.setSendDate(sendDate);
-	
+
 				sms.send(message);
 				if(sm.delete() == false) {
 					log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
