@@ -15,7 +15,7 @@ public class ShortMessage {
 		setText(text);
 	}
 
-	BigDecimal getReceiverNo() {
+	public BigDecimal getReceiverNo() {
 		return receiverNo;
 	}
 
@@ -25,7 +25,7 @@ public class ShortMessage {
 		this.receiverNo = receiverNo;
 	}
 
-	BigDecimal getSenderNo() {
+	public BigDecimal getSenderNo() {
 		return SenderNo;
 	}
 
@@ -33,7 +33,7 @@ public class ShortMessage {
 		SenderNo = senderNo;
 	}
 
-	String getText() {
+	public String getText() {
 		return text;
 	}
 
@@ -43,12 +43,11 @@ public class ShortMessage {
 		this.text = text;
 	}
 
-	String getSendDate() {
+	public String getSendDate() {
 		return sendDate;
 	}
 
 	void setSendDate(String sendDate) {
 		this.sendDate = sendDate;
 	}
-	
 }

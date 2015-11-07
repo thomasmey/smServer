@@ -1,4 +1,4 @@
-package smServer;
+package smServer.backend.file;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.Reader;
-import java.math.BigDecimal;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,19 +18,22 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class WatchDirServer implements Runnable {
+import smServer.Controller;
+import smServer.NewMessageWatcher;
+
+public class WatchDirServer extends NewMessageWatcher {
 
 	private final Logger log;
 	private final Controller controller;
 	private final FilenameFilter fnFilter;
 	private final Path watchDir;
 
-	WatchDirServer (Controller controller, String watchDir) {
+	public WatchDirServer(Controller controller) {
 
 		this.log = Logger.getLogger(WatchDirServer.class.getName());
 		this.controller = controller;
-		this.watchDir = Paths.get(watchDir);
-		this.fnFilter = new FilenamePostfixFilter("sm");
+		this.watchDir = Paths.get(controller.getBaseDir());
+		this.fnFilter = new FilenamePostfixFilter(Constants.FILENAME_POSTFIX);
 	}
 
 	public void run() {
@@ -92,7 +94,7 @@ public class WatchDirServer implements Runnable {
 						// only process files with certain file name
 						if(fnFilter.accept(null, sm.getName())) {
 							try {
-								controller.processFile(sm);
+								processFile(sm);
 							} catch (FileNotFoundException ex) {
 								log.log(Level.SEVERE,"File not found!", ex);
 							} catch (IOException ex) {
@@ -111,13 +113,36 @@ public class WatchDirServer implements Runnable {
 		File files[] = watchDir.toFile().listFiles(fnFilter);
 		for(File sm : files) {
 			try {
-				controller.processFile(sm);
+				processFile(sm);
 			} catch (FileNotFoundException ex) {
 				log.log(Level.SEVERE,"File not found!", ex);
 			} catch (IOException ex) {
 				log.log(Level.SEVERE,"IO error!", ex);
 				return;
 			}
+		}
+	}
+
+
+	void processFile(File sm) throws IOException {
+
+		assert sm != null;
+
+		log.log(Level.FINE,"Sending file {0}", sm.getName());
+
+		if(!sm.exists())
+			return;
+
+		Properties msg = new Properties();
+		Reader fr = new FileReader(sm);
+		msg.load(fr);
+		fr.close();
+
+		controller.sendMessage(msg);
+
+		if(sm.delete() == false) {
+			log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
+			throw new IOException();
 		}
 	}
 }

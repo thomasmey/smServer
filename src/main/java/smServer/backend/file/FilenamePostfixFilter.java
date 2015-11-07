@@ -1,4 +1,4 @@
-package smServer;
+package smServer.backend.file;
 import java.io.File;
 import java.io.FilenameFilter;
 

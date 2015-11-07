@@ -1,4 +1,4 @@
-package smServer;
+package smServer.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +17,9 @@ import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import smServer.ShortMessage;
+import smServer.ShortMessageSender;
+
 public class InnoApi implements ShortMessageSender, Runnable {
 
 	private final String encoding;
@@ -27,9 +30,9 @@ public class InnoApi implements ShortMessageSender, Runnable {
 
 	private static final Queue<ShortMessage> messageQueue = new LinkedList<ShortMessage>();
 
-	InnoApi (Logger log, String userName, String password) {
+	public InnoApi (String userName, String password) {
 		this.encoding = "ISO-8859-15";
-		this.log = log;
+		this.log = Logger.getLogger(InnoApi.class.getName());
 
 		setUserName(userName);
 		setPassword(password);
