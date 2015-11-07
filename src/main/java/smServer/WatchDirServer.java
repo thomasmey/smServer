@@ -22,24 +22,22 @@ import java.util.logging.Logger;
 public class WatchDirServer implements Runnable {
 
 	private final Logger log;
-	private final ShortMessageSender sms;
-	private final Properties msgProps;
+	private final Controller controller;
 	private final FilenameFilter fnFilter;
 	private final Path watchDir;
 
-	WatchDirServer (ShortMessageSender sms, Logger log, String watchDir) {
+	WatchDirServer (Controller controller, String watchDir) {
 
-		this.log = log;
-		this.sms = sms;
+		this.log = Logger.getLogger(WatchDirServer.class.getName());
+		this.controller = controller;
 		this.watchDir = Paths.get(watchDir);
-		this.msgProps = new Properties();
 		this.fnFilter = new FilenamePostfixFilter("sm");
 	}
 
 	public void run() {
 
 		assert log != null;
-		assert sms != null;
+		assert controller != null;
 
 		log.log(Level.INFO,"Server started.");
 		if(!watchDir.toFile().exists()) {
@@ -94,7 +92,7 @@ public class WatchDirServer implements Runnable {
 						// only process files with certain file name
 						if(fnFilter.accept(null, sm.getName())) {
 							try {
-								processFile(sm);
+								controller.processFile(sm);
 							} catch (FileNotFoundException ex) {
 								log.log(Level.SEVERE,"File not found!", ex);
 							} catch (IOException ex) {
@@ -113,51 +111,12 @@ public class WatchDirServer implements Runnable {
 		File files[] = watchDir.toFile().listFiles(fnFilter);
 		for(File sm : files) {
 			try {
-				processFile(sm);
+				controller.processFile(sm);
 			} catch (FileNotFoundException ex) {
 				log.log(Level.SEVERE,"File not found!", ex);
 			} catch (IOException ex) {
 				log.log(Level.SEVERE,"IO error!", ex);
 				return;
-			}
-		}
-	}
-
-	private void processFile(File sm) throws FileNotFoundException, IOException {
-
-		assert sm != null;
-
-		log.log(Level.FINE,"Sending file {0}", sm.getName());
-
-		if(!sm.exists())
-			return;
-
-		msgProps.clear();
-		Reader fr = new FileReader(sm);
-		msgProps.load(fr);
-		String rnSplit[] = msgProps.getProperty("receiverNo").split(",");
-		String textMessage = msgProps.getProperty("text");
-		String sendDate = msgProps.getProperty("termin");
-		fr.close();
-
-		for(String rn: rnSplit) {
-
-			if(rn != null && textMessage != null) {
-				BigDecimal receiverNo = new BigDecimal(rn);
-				ShortMessage message = null;
-				try {
-					message = new ShortMessage(Controller.senderNo,receiverNo,textMessage);
-				} catch(Exception e) {
-					log.log(Level.SEVERE,"Couldn't create SMS object!", e);
-					return;
-				}
-				message.setSendDate(sendDate);
-
-				sms.send(message);
-				if(sm.delete() == false) {
-					log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());
-					throw new IOException();
-				}
 			}
 		}
 	}
