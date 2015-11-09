@@ -24,14 +24,13 @@ import smServer.NewMessageWatcher;
 public class WatchDirServer extends NewMessageWatcher {
 
 	private final Logger log;
-	private final Controller controller;
 	private final FilenameFilter fnFilter;
 	private final Path watchDir;
 
 	public WatchDirServer(Controller controller) {
 
+		super(controller);
 		this.log = Logger.getLogger(WatchDirServer.class.getName());
-		this.controller = controller;
 		this.watchDir = Paths.get(controller.getBaseDir());
 		this.fnFilter = new FilenamePostfixFilter(Constants.FILENAME_POSTFIX);
 	}
@@ -39,7 +38,6 @@ public class WatchDirServer extends NewMessageWatcher {
 	public void run() {
 
 		assert log != null;
-		assert controller != null;
 
 		log.log(Level.INFO,"Server started.");
 		if(!watchDir.toFile().exists()) {

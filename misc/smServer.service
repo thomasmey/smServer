@@ -9,6 +9,7 @@ After=network.target
 Type=simple
 Environment=CLASSPATH=/usr/share/java/smServer.jar
 ExecStart=/usr/bin/java smServer.Controller
+SyslogIdentifier=smServer
 
 [Install]
 WantedBy=default.target

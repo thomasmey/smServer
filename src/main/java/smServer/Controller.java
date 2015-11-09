@@ -1,15 +1,17 @@
 package smServer;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.util.Hashtable;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.backend.file.WatchDirPeriodicServer;
-import smServer.backend.file.WatchDirServer;
+import smServer.backend.db.ConMan;
+import smServer.backend.db.DbPropsReader;
+import smServer.backend.file.FilePropsReader;
 import smServer.impl.InnoApi;
 
 public class Controller implements Runnable {
@@ -17,7 +19,7 @@ public class Controller implements Runnable {
 	private BigDecimal senderNo;
 	private Logger log;
 	private ShortMessageSender sms;
-	private Properties appProps;
+	private Hashtable<String, String> appProps;
 	private String baseDir;
 	private Thread sendThreads[];
 
@@ -35,21 +37,20 @@ public class Controller implements Runnable {
 	public Controller() {
 		log = Logger.getLogger(Controller.class.getName());
 		baseDir = System.getProperty("user.home") + File.separatorChar + "smServer";
-		appProps = new Properties();
 	}
 
 	@Override
 	public void run() {
 
 		getAppProps();
-		senderNo = new BigDecimal(appProps.getProperty("senderNo"));
+		senderNo = new BigDecimal(appProps.get("senderNo"));
 
-		sms = new InnoApi(appProps.getProperty("username"), appProps.getProperty("password"));
+		sms = new InnoApi(appProps.get("username"), appProps.get("password"));
 
 		// start sending threads
 		Runnable sendingRunnable = (Runnable) sms;
 
-		int noSendingThreads = Integer.valueOf(appProps.getProperty("noSendingThreads"));
+		int noSendingThreads = Integer.valueOf(appProps.get("noSendingThreads"));
 		sendThreads = new Thread[noSendingThreads];
 		for (int i = 0; i < sendThreads.length; i++) {
 			sendThreads[i] = new Thread(sendingRunnable);
@@ -57,12 +58,16 @@ public class Controller implements Runnable {
 		}
 
 		// start new message watcher
-		NewMessageWatcher nmw = new WatchDirServer(this);
+		NewMessageWatcher nmw = getInstance(appProps.get("newMessageWatcherClass"));
 		nmw.run();
 
 		// start periodic message watcher
-		PeriodicMessageWatcher pmw = new WatchDirPeriodicServer(this);
+		PeriodicMessageWatcher pmw = getInstance(appProps.get("periodicMessageWatcherClass"));
 		pmw.run();
+
+		try {
+			Thread.sleep(Long.MAX_VALUE);
+		} catch (InterruptedException e) {}
 
 		// stop all timers
 		pmw.stop();
@@ -71,12 +76,28 @@ public class Controller implements Runnable {
 		stopAllSenders();
 	}
 
-	private void getAppProps() {
+	private <T> T getInstance(String className) {
 		try {
-			appProps.load(new FileReader(new File(baseDir, "AppSender.properties")));
-		} catch (IOException e) {
-			log.log(Level.SEVERE,"Failed to load app props!", e);
+			Class<T> clazz = (Class<T>) Class.forName(className);
+			Constructor<T> c = clazz.getConstructor(Controller.class);
+			return c.newInstance(this);
+		} catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			log.log(Level.SEVERE, "class not found!", e);
 		}
+		return null;
+	}
+
+	private void getAppProps() {
+		String dbUrl = System.getenv(ConMan.ENV_DB_URL);
+
+		PropsReader pr = null;
+		if(dbUrl == null) {
+			pr = new FilePropsReader(baseDir);
+		} else {
+			pr = new DbPropsReader();
+		}
+
+		appProps = pr.get();
 	}
 
 	private void stopAllSenders() {
@@ -85,10 +106,10 @@ public class Controller implements Runnable {
 		}
 	}
 
-	public void sendMessage(Properties msgProps) {
-		String rnSplit[] = msgProps.getProperty("receiverNo").split(",");
-		String textMessage = msgProps.getProperty("text");
-		String sendDate = msgProps.getProperty("termin");
+	public void sendMessage(Properties msg) {
+		String rnSplit[] = msg.getProperty("receiverNo").split(",");
+		String textMessage = msg.getProperty("text");
+		String sendDate = msg.getProperty("termin");
 
 		for(String rn: rnSplit) {
 
