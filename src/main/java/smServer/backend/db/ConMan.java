@@ -27,13 +27,23 @@ public class ConMan {
 	}
 
 	synchronized Connection getConnection() throws SQLException {
-		if(con == null) {
+		if(con == null || con != null && !isStillValid()) {
 			con = getNewConnection();
 		}
 		return con;
 	}
 
+	private boolean isStillValid() {
+		try {
+			con.createStatement().executeQuery("select 1");
+			return true;
+		} catch (SQLException e) {
+			return false;
+		}
+	}
+
 	private Connection getNewConnection() throws SQLException {
-		return DriverManager.getConnection(url, System.getenv(ENV_DB_USERNAME), System.getenv(ENV_DB_PASSWORD));
+		Connection con = DriverManager.getConnection(url, System.getenv(ENV_DB_USERNAME), System.getenv(ENV_DB_PASSWORD));
+		return con;
 	}
 }

@@ -1,13 +1,22 @@
 package smServer;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.net.ServerSocketFactory;
 
 import smServer.backend.db.ConMan;
 import smServer.backend.db.DbPropsReader;
@@ -16,12 +25,23 @@ import smServer.impl.InnoApi;
 
 public class Controller implements Runnable {
 
-	private BigDecimal senderNo;
 	private Logger log;
-	private ShortMessageSender sms;
+
 	private Hashtable<String, String> appProps;
+	private BigDecimal senderNo;
 	private String baseDir;
+
+	private ShortMessageSender sms;
+	
 	private Thread sendThreads[];
+	private NewMessageWatcher nmw;
+	private PeriodicMessageWatcher pmw;
+
+	private Charset charAscii = Charset.forName("ASCII");
+	final byte[] command = "?command=".getBytes(charAscii);
+	final byte[] cmdRefreshPeriodic = "rfsh".getBytes(charAscii);
+	final byte[] cmdSendMessages = "send".getBytes(charAscii);
+	final byte[] cmdStopServer = "stop".getBytes(charAscii);
 
 	/**
 	 * @param args
@@ -57,23 +77,106 @@ public class Controller implements Runnable {
 			sendThreads[i].start();
 		}
 
-		// start new message watcher
-		NewMessageWatcher nmw = getInstance(appProps.get("newMessageWatcherClass"));
+		nmw = getInstance(appProps.get("newMessageWatcherClass"));
 		nmw.run();
 
-		// start periodic message watcher
-		PeriodicMessageWatcher pmw = getInstance(appProps.get("periodicMessageWatcherClass"));
+		pmw = getInstance(appProps.get("periodicMessageWatcherClass"));
 		pmw.run();
 
+		// start command listener
+
 		try {
-			Thread.sleep(Long.MAX_VALUE);
-		} catch (InterruptedException e) {}
+			commandServerLoop();
+		} catch (InterruptedException e) {
+		} finally {
 
-		// stop all timers
-		pmw.stop();
+			// stop all timers
+			pmw.stop();
 
-		// stop all senders
-		stopAllSenders();
+			// stop all senders
+			stopAllSenders();
+		}
+	}
+
+	private void commandServerLoop() throws InterruptedException {
+
+		byte[] buffer = new byte[1024];
+		byte[] httpRespOk = "HTTP/1.0 200 OK\r\n\r\n".getBytes(charAscii);
+
+		int port = Integer.valueOf(System.getenv("PORT"));
+		ServerSocket ss;
+		try {
+			ss = ServerSocketFactory.getDefault().createServerSocket(port);
+		} catch (IOException e) {
+			log.log(Level.SEVERE,"failed to reserve port!", e);
+			return;
+		}
+
+		while(true) {
+
+			try {
+				Socket s = ss.accept();
+				InputStream in = s.getInputStream();
+				int n = in.read(buffer);
+
+				String rc = processRequest(buffer, n);
+				if(rc != null) {
+					switch (rc) {
+					case "refreshPeriodic":
+						pmw.refresh();
+						break;
+					case "sendMessages":
+						nmw.refresh();
+						break;
+					case "stopServer":
+						throw new InterruptedException();
+					}
+				}
+
+				OutputStream out = s.getOutputStream();
+				out.write(httpRespOk);
+				s.close();
+			} catch(RuntimeException | IOException e) {
+				log.log(Level.SEVERE, "command server failed!", e);
+			}
+		}
+	}
+
+	private String processRequest(byte[] buffer, final int n) {
+
+		try {
+			int i = 0, ic = 0;
+
+			final int cmdLen = 4;
+
+			boolean found = false;
+			for(; i < n; i++) {
+				if(buffer[i] == command[ic]) {
+					ic++;
+					if(ic == command.length) {
+						found = true;
+						break;
+					}
+				} else {
+					ic = 0;
+				}
+			}
+			if(found) {
+				i++; // '='
+				byte[] cmd = Arrays.copyOfRange(buffer, i, i+cmdLen);
+				if(Arrays.equals(cmd, cmdRefreshPeriodic)) {
+					return "refreshPeriodic";
+				} else if(Arrays.equals(cmd, cmdSendMessages)) {
+					return "sendMessages";
+				} else if(Arrays.equals(cmd, cmdStopServer)) {
+					return "stopServer";
+				}
+			}
+
+		} catch(RuntimeException e) {
+			log.log(Level.INFO, "failed to parse command request", e);
+		}
+		return null;
 	}
 
 	private <T> T getInstance(String className) {

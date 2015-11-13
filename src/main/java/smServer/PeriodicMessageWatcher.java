@@ -40,9 +40,9 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 
 		FixedMessageTimerTask timerTask = new FixedMessageTimerTask(controller, msg);
 
-		if(periodicTimers.get(timerId) != null) {
-			log.log(Level.SEVERE, "Duplicate timer id detected {0}, file {1}", new Object[] { timerId, period });
-			return;
+		if(periodicTimers.containsKey(timerId)) {
+			TimerTask tt = periodicTimers.get(timerId);
+			tt.cancel();
 		}
 
 		Calendar cal = Calendar.getInstance();
@@ -114,7 +114,7 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 				cal.set(Calendar.HOUR_OF_DAY, hour);
 				cal.set(Calendar.MINUTE, minute);
 
-				if(cal.compareTo(Calendar.getInstance()) > 0)
+				if(cal.compareTo(Calendar.getInstance()) < 0)
 					cal.add(Calendar.YEAR, 1);
 
 				timerTask.setReschedule(() -> { cal.add(Calendar.YEAR, 1); timer.schedule(timerTask, cal.getTime()); } );
@@ -124,5 +124,7 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 		}
 		periodicTimers.put(timerId, timerTask);
 	}
+
+	abstract public void refresh();
 
 }

@@ -7,4 +7,6 @@ public abstract class NewMessageWatcher implements Runnable {
 	public NewMessageWatcher(Controller controller) {
 		this.controller = controller;
 	}
+
+	abstract public void refresh();
 }

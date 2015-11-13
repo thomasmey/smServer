@@ -143,5 +143,8 @@ public class WatchDirServer extends NewMessageWatcher {
 			throw new IOException();
 		}
 	}
+
+	@Override
+	public void refresh() {}
 }
 

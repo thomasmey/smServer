@@ -62,4 +62,7 @@ public class WatchDirPeriodicServer extends PeriodicMessageWatcher {
 			t.cancel();
 		}
 	}
+
+	@Override
+	public void refresh() {}
 }
