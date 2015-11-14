@@ -1,6 +1,7 @@
 package smServer;
 
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -19,7 +20,7 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 
 	public PeriodicMessageWatcher(Controller controller) {
 		this.controller = controller;
-		periodicTimers = new HashMap<>();
+		periodicTimers = Collections.synchronizedMap(new HashMap<>());
 		timer = new Timer();
 		log = Logger.getLogger(PeriodicMessageWatcher.class.getName());
 	}
@@ -29,6 +30,8 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 	}
 
 	protected void addPeriodicTimer(Properties msg) {
+
+		msg.remove("termin");
 
 		String timerId = msg.getProperty("id");
 		String period = msg.getProperty("period");
@@ -44,6 +47,8 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 			TimerTask tt = periodicTimers.get(timerId);
 			tt.cancel();
 		}
+
+		periodicTimers.put(timerId, timerTask);
 
 		Calendar cal = Calendar.getInstance();
 
@@ -93,7 +98,7 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 				if(cal.compareTo(Calendar.getInstance()) < 0)
 					cal.add(Calendar.MONTH, 1);
 
-				timerTask.setReschedule(() -> { cal.add(Calendar.MONTH, 1); timer.schedule(timerTask, cal.getTime()); } );
+				timerTask.setReschedule(periodicTimers, timerId, timer, cal, (c) -> { c.add(Calendar.MONTH, 1); } );
 				timer.schedule(timerTask, cal.getTime());
 			}
 			break;
@@ -117,12 +122,11 @@ public abstract class PeriodicMessageWatcher implements Runnable {
 				if(cal.compareTo(Calendar.getInstance()) < 0)
 					cal.add(Calendar.YEAR, 1);
 
-				timerTask.setReschedule(() -> { cal.add(Calendar.YEAR, 1); timer.schedule(timerTask, cal.getTime()); } );
+				timerTask.setReschedule(periodicTimers, timerId, timer, cal, (c) -> { c.add(Calendar.YEAR, 1); } );
 				timer.schedule(timerTask, cal.getTime());
 			}
 			break;
 		}
-		periodicTimers.put(timerId, timerTask);
 	}
 
 	abstract public void refresh();

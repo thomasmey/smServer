@@ -112,6 +112,7 @@ public class Controller implements Runnable {
 			return;
 		}
 
+		int errorCount = 0;
 		while(true) {
 
 			try {
@@ -138,6 +139,9 @@ public class Controller implements Runnable {
 				s.close();
 			} catch(RuntimeException | IOException e) {
 				log.log(Level.SEVERE, "command server failed!", e);
+				errorCount++;
+				if(errorCount > 10)
+					throw new InterruptedException();
 			}
 		}
 	}
