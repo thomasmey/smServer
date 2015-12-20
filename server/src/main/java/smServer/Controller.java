@@ -18,12 +18,15 @@ import java.util.logging.Logger;
 
 import javax.net.ServerSocketFactory;
 
+import org.osgi.framework.BundleActivator;
+import org.osgi.framework.BundleContext;
+
 import smServer.backend.db.ConMan;
 import smServer.backend.db.DbPropsReader;
 import smServer.backend.file.FilePropsReader;
 import smServer.impl.InnoApi;
 
-public class Controller implements Runnable {
+public class Controller implements BundleActivator {
 
 	private Logger log;
 
@@ -43,24 +46,14 @@ public class Controller implements Runnable {
 	final byte[] cmdSendMessages = "send".getBytes(charAscii);
 	final byte[] cmdStopServer = "stop".getBytes(charAscii);
 
-	/**
-	 * @param args
-	 * @throws IOException 
-	 * @throws FileNotFoundException 
-	 * @throws InterruptedException 
-	 */
-	public static void main(String[] args) {
-		Controller controller = new Controller();
-		controller.run();
-	}
-
 	public Controller() {
 		log = Logger.getLogger(Controller.class.getName());
 		baseDir = System.getProperty("user.home") + File.separatorChar + "smServer";
+		log.log(Level.INFO, "Bundel starting!");
 	}
 
 	@Override
-	public void run() {
+	public void start(BundleContext context) throws Exception {
 
 		getAppProps();
 		senderNo = new BigDecimal(appProps.get("senderNo"));
@@ -237,5 +230,11 @@ public class Controller implements Runnable {
 
 	public String getBaseDir() {
 		return baseDir;
+	}
+
+	@Override
+	public void stop(BundleContext context) throws Exception {
+		// TODO Auto-generated method stub
+		
 	}
 }

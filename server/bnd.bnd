@@ -1,0 +1,3 @@
+# See http://bnd.bndtools.org/chapters/800-headers.html and
+# http://bnd.bndtools.org/chapters/790-format.html
+Bundle-Activator: smServer.Controller
