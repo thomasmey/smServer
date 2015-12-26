@@ -23,12 +23,24 @@
 			</binaries>
 		</moduleSet>
 	</moduleSets>
-  <dependencySets>
-    <dependencySet>
-      <outputDirectory>/</outputDirectory>
-      <useProjectArtifact>true</useProjectArtifact>
-      <unpack>true</unpack>
-      <scope>runtime</scope>
-    </dependencySet>
-  </dependencySets>
+	<dependencySets>
+		<dependencySet>
+			<includes>
+				<include>org.eclipse:osgi</include>
+			</includes>
+			<outputDirectory>/</outputDirectory>
+			<useProjectArtifact>true</useProjectArtifact>
+			<unpack>true</unpack>
+			<scope>runtime</scope>
+		</dependencySet>
+		<dependencySet>
+			<includes>
+				<include>de.m3y3r:smServer-framework</include>
+			</includes>
+			<outputDirectory>/</outputDirectory>
+			<useProjectArtifact>true</useProjectArtifact>
+			<unpack>true</unpack>
+			<scope>runtime</scope>
+		</dependencySet>
+	</dependencySets>
 </assembly>

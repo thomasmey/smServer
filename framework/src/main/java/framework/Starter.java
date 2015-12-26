@@ -1,6 +1,5 @@
 package framework;
 
-import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,7 +34,6 @@ public class Starter {
 		HashMap<String, String> bundles = new HashMap<>();
 		bundles.put("server", "/osgi/modules/smServer-server-0.1.0-SNAPSHOT.jar");
 		bundles.put("mysql-driver", "/osgi/modules/mysql-connector-java-5.1.37.jar");
-//		bundles.put("osgi.core", "/osgi/modules/org.osgi.core-4.2.0.jar");
 
 		BundleContext bundleContext = framework.getBundleContext();
 		Bundle[] installedBundles = installBundles(bundleContext, bundles);

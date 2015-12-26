@@ -24,7 +24,6 @@
 			<groupId>org.osgi</groupId>
 			<artifactId>org.osgi.core</artifactId>
 			<version>5.0.0</version>
-			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 	<build>
@@ -34,7 +33,9 @@
 				<artifactId>bnd-maven-plugin</artifactId>
 				<executions>
 					<execution>
-						<goals><goal>bnd-process</goal></goals>
+						<goals>
+							<goal>bnd-process</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

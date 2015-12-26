@@ -46,10 +46,16 @@ public class Controller implements BundleActivator {
 	final byte[] cmdSendMessages = "send".getBytes(charAscii);
 	final byte[] cmdStopServer = "stop".getBytes(charAscii);
 
+	private Thread commandServerThread;
+
+	private Thread nmwThread;
+
+	private Thread pmwThread;
+
 	public Controller() {
 		log = Logger.getLogger(Controller.class.getName());
 		baseDir = System.getProperty("user.home") + File.separatorChar + "smServer";
-		log.log(Level.INFO, "Bundel starting!");
+		log.log(Level.INFO, "Bundle starting!");
 	}
 
 	@Override
@@ -71,24 +77,24 @@ public class Controller implements BundleActivator {
 		}
 
 		nmw = getInstance(appProps.get("newMessageWatcherClass"));
-		nmw.run();
+		nmwThread = new Thread(nmw);
+		nmwThread.start();
 
 		pmw = getInstance(appProps.get("periodicMessageWatcherClass"));
-		pmw.run();
+		pmwThread = new Thread(pmw);
+		pmwThread.start();
 
 		// start command listener
+		commandServerThread = new Thread(new Runnable() {
 
-		try {
-			commandServerLoop();
-		} catch (InterruptedException e) {
-		} finally {
-
-			// stop all timers
-			pmw.stop();
-
-			// stop all senders
-			stopAllSenders();
-		}
+			@Override
+			public void run() {
+				try {
+					commandServerLoop();
+				} catch (InterruptedException e) {}
+			}
+		});
+		commandServerThread.start();
 	}
 
 	private void commandServerLoop() throws InterruptedException {
@@ -107,6 +113,8 @@ public class Controller implements BundleActivator {
 
 		int errorCount = 0;
 		while(true) {
+			if(Thread.currentThread().isInterrupted())
+				return;
 
 			try {
 				Socket s = ss.accept();
@@ -234,7 +242,14 @@ public class Controller implements BundleActivator {
 
 	@Override
 	public void stop(BundleContext context) throws Exception {
-		// TODO Auto-generated method stub
-		
+		nmwThread.interrupt();
+
+		// stop all timers
+		pmwThread.interrupt();
+
+		// stop all senders
+		stopAllSenders();
+
+		commandServerThread.interrupt();
 	}
 }
