@@ -4,20 +4,20 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Properties;
-import java.util.TimerTask;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.Controller;
-import smServer.PeriodicMessageWatcher;
+import smServer.AppContext;
+import smServer.ShortMessage;
+import smServer.AbstractPeriodicMessageWatcher;
 
-public class WatchDirPeriodicServer extends PeriodicMessageWatcher {
+public class WatchDirPeriodicServer extends AbstractPeriodicMessageWatcher {
 
 	private Logger log;
 
-	public WatchDirPeriodicServer(Controller controller) {
+	public WatchDirPeriodicServer(AppContext controller) {
 		super(controller);
 	}
 
@@ -33,21 +33,21 @@ public class WatchDirPeriodicServer extends PeriodicMessageWatcher {
 
 	private void refreshPeriodicEvents() {
 		log.log(Level.FINE, "Processing periodic events");
-		File dir = new File(controller.getBaseDir(), "periodic");
+		File dir = new File((String) ctx.get(AppContext.BASE_DIR), "periodic");
 		if(!dir.exists())
 			return;
 
 		for(File periodic: dir.listFiles(new FilenamePostfixFilter(Constants.FILENAME_POSTFIX))) {
-			Properties msgProps = new Properties();
+			ShortMessage sm = new ShortMessage();
 			try {
 				Reader fr = new FileReader(periodic);
-				msgProps.load(fr);
+				sm.load(fr);
 			} catch(IOException e) {
 				log.log(Level.SEVERE, "cannot load file {0}, excp {1}", new Object[] {periodic, e});
 				continue;
 			}
 
-			addPeriodicTimer(msgProps);
+			addPeriodicTimer(sm);
 		}
 	}
 
@@ -58,8 +58,8 @@ public class WatchDirPeriodicServer extends PeriodicMessageWatcher {
 	}
 
 	private void stopAllTimers() {
-		for(TimerTask t : periodicTimers.values()) {
-			t.cancel();
+		for(ScheduledFuture t : timerTasks.values()) {
+			t.cancel(true);
 		}
 	}
 

@@ -1,53 +1,14 @@
 package smServer;
-import java.math.BigDecimal;
 
-public class ShortMessage {
+import java.util.Properties;
 
-	private static int MAX_LENGTH = 160;
-	private BigDecimal receiverNo;
-	private BigDecimal SenderNo;
-	private String text;
-	private String sendDate;
+public class ShortMessage extends Properties {
 
-	public ShortMessage(BigDecimal senderNo, BigDecimal receiverNo, String text) {
-		setReceiverNo(receiverNo);
-		setSenderNo(senderNo);
-		setText(text);
-	}
+	public static final String ID = "id";
+	public static final String RECEIVER_NO = "receiverNo";
+	public static final String TEXT = "text";
+	public static final String PERIOD = "period";
+	public static final String AT = "at";
+	public static final String TERMIN = "termin";
 
-	public BigDecimal getReceiverNo() {
-		return receiverNo;
-	}
-
-	void setReceiverNo(BigDecimal receiverNo) {
-//		if(receiverNo.compareTo(new BigDecimal("99999999999")) > 0 )
-//			throw new NumberFormatException();
-		this.receiverNo = receiverNo;
-	}
-
-	public BigDecimal getSenderNo() {
-		return SenderNo;
-	}
-
-	void setSenderNo(BigDecimal senderNo) {
-		SenderNo = senderNo;
-	}
-
-	public String getText() {
-		return text;
-	}
-
-	void setText(String text) {
-		if(text.length() > ShortMessage.MAX_LENGTH)
-			throw new StringIndexOutOfBoundsException(text.length());
-		this.text = text;
-	}
-
-	public String getSendDate() {
-		return sendDate;
-	}
-
-	void setSendDate(String sendDate) {
-		this.sendDate = sendDate;
-	}
 }

@@ -20,6 +20,12 @@
 			<version>3.10.0-v20140606-1445</version>
 		</dependency>
 		<dependency>
+			<groupId>org.eclipse.equinox</groupId>
+			<artifactId>org.eclipse.equinox.ds</artifactId>
+			<version>1.4.300</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
 			<groupId>de.m3y3r</groupId>
 			<artifactId>smServer-server</artifactId>
 			<version>0.1.0-SNAPSHOT</version>

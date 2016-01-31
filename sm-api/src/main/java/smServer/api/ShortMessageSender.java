@@ -1,4 +1,4 @@
-package smServer;
+package smServer.api;
 
 public interface ShortMessageSender {
 

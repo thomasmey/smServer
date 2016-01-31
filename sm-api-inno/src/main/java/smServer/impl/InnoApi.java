@@ -17,8 +17,8 @@ import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.ShortMessage;
-import smServer.ShortMessageSender;
+import smServer.api.ShortMessage;
+import smServer.api.ShortMessageSender;
 
 public class InnoApi implements ShortMessageSender, Runnable {
 
@@ -156,5 +156,4 @@ public class InnoApi implements ShortMessageSender, Runnable {
 	private void setPassword(String password) {
 		this.password = password;
 	}
-
 }

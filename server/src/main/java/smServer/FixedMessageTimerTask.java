@@ -1,53 +1,52 @@
 package smServer;
 
 import java.util.Calendar;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class FixedMessageTimerTask extends TimerTask {
+import smServer.ShortMessage;
 
-	private Properties props;
-	private Controller controller;
-	private Consumer<Calendar> nextTime;
+public class FixedMessageTimerTask implements Runnable {
+
 	private Logger log;
-	private Calendar calendar;
-	private Timer timer;
-	private Map<String, TimerTask> periodicTimers;
-	private String timerId;
+	private ShortMessage message;
 
-	public FixedMessageTimerTask(Controller controller, Properties msgProps) {
-		this.props = msgProps;
-		this.controller = controller;
+	private AppContext ctx;
+	private Consumer<Calendar> nextTime;
+	private Calendar calendar;
+
+	private AbstractPeriodicMessageWatcher pwm;
+
+	public FixedMessageTimerTask(AppContext context, ShortMessage msgProps, AbstractPeriodicMessageWatcher pwm) {
 		this.log = Logger.getLogger(FixedMessageTimerTask.class.getName());
+		this.message = msgProps;
+		this.ctx = context;
+		this.pwm = pwm;
 	}
 
 	@Override
 	public void run() {
-		log.log(Level.INFO, "Executing scheduled task {0}",props.getProperty("id"));
-		controller.sendMessage(props);
+		log.log(Level.INFO, "Executing scheduled task {0}", message.getProperty("id"));
+		MessageUtil.sendMessage(ctx, message);
 
 		if(nextTime != null) {
-			System.out.println("before=" + calendar);
-			nextTime.accept(calendar);
-			System.out.println("after=" + calendar);
-			FixedMessageTimerTask timerTask = new FixedMessageTimerTask(controller, props);
-			timerTask.setReschedule(periodicTimers, timerId, timer, calendar, nextTime);
-			timer.schedule(timerTask, calendar.getTime());
-			periodicTimers.put(timerId, timerTask);
+			pwm.reschedule(this);
 		}
 	}
 
-	public void setReschedule(Map<String, TimerTask> periodicTimers, String timerId, Timer timer, Calendar cal, Consumer<Calendar> nextTime) {
+	public void setReschedule(Calendar cal, Consumer<Calendar> nextTime) {
 		this.nextTime = nextTime;
 		this.calendar = (Calendar) cal.clone();
-		this.timer = timer;
-		this.periodicTimers = periodicTimers;
-		this.timerId = timerId;
+	}
+
+	public void applyNextTime() {
+		nextTime.accept(calendar);
+	}
+	public Calendar getCalendar() {
+		return calendar;
+	}
+	public ShortMessage getMessage() {
+		return message;
 	}
 }

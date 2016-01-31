@@ -18,20 +18,21 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.Controller;
-import smServer.NewMessageWatcher;
+import smServer.AbstractNewMessageWatcher;
+import smServer.AppContext;
+import smServer.MessageUtil;
+import smServer.ShortMessage;
 
-public class WatchDirServer extends NewMessageWatcher {
+public class WatchDirServer extends AbstractNewMessageWatcher {
 
 	private final Logger log;
 	private final FilenameFilter fnFilter;
 	private final Path watchDir;
 
-	public WatchDirServer(Controller controller) {
-
+	public WatchDirServer(AppContext controller) {
 		super(controller);
 		this.log = Logger.getLogger(WatchDirServer.class.getName());
-		this.watchDir = Paths.get(controller.getBaseDir());
+		this.watchDir = Paths.get((String)controller.get(AppContext.BASE_DIR));
 		this.fnFilter = new FilenamePostfixFilter(Constants.FILENAME_POSTFIX);
 	}
 
@@ -121,7 +122,6 @@ public class WatchDirServer extends NewMessageWatcher {
 		}
 	}
 
-
 	void processFile(File sm) throws IOException {
 
 		assert sm != null;
@@ -131,12 +131,12 @@ public class WatchDirServer extends NewMessageWatcher {
 		if(!sm.exists())
 			return;
 
-		Properties msg = new Properties();
+		ShortMessage msg = new ShortMessage();
 		Reader fr = new FileReader(sm);
 		msg.load(fr);
 		fr.close();
 
-		controller.sendMessage(msg);
+		MessageUtil.sendMessage(ctx, msg);
 
 		if(sm.delete() == false) {
 			log.log(Level.SEVERE, "Cannot delete file {0}. Stopping server.", sm.getName());

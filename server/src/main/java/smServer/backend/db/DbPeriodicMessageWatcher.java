@@ -6,18 +6,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.Controller;
-import smServer.PeriodicMessageWatcher;
+import javax.annotation.Resource;
+import javax.enterprise.inject.Produces;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 
-public class DbPeriodicMessageWatcher extends PeriodicMessageWatcher {
+import smServer.AppContext;
+import smServer.ShortMessage;
+import smServer.AbstractPeriodicMessageWatcher;
+
+public class DbPeriodicMessageWatcher extends AbstractPeriodicMessageWatcher {
 
 	private Logger log;
 
-	public DbPeriodicMessageWatcher(Controller controller) {
+	public DbPeriodicMessageWatcher(AppContext controller) {
 		super(controller);
 		log = Logger.getLogger(DbPeriodicMessageWatcher.class.getName());
 	}
@@ -31,28 +37,30 @@ public class DbPeriodicMessageWatcher extends PeriodicMessageWatcher {
 		log.log(Level.INFO, "Processing periodic events");
 
 		try {
-			Connection con = ConMan.getInstance().getConnection();
+			DataSource dataSource = InitialContext.doLookup("jdbc/DefaultDS");
+			Connection con = dataSource.getConnection();
 			PreparedStatement ps = con.prepareStatement("select message_id, receiver_no, message_text, period, send_at from sms_message_periodic");
 			ResultSet q = ps.executeQuery();
-			List<Properties> messages = new ArrayList<>();
+			List<ShortMessage> messages = new ArrayList<>();
 
 			while(q.next()) {
-				Properties msg = new Properties();
-				msg.put("id", String.valueOf(q.getInt(1)));
-				msg.put("receiverNo", q.getString(2));
-				msg.put("text", q.getString(3));
-				msg.put("period", q.getString(4));
-				msg.put("at", q.getString(5));
+				ShortMessage msg = new ShortMessage();
+				msg.put(ShortMessage.ID, String.valueOf(q.getInt(1)));
+				msg.put(ShortMessage.RECEIVER_NO, q.getString(2));
+				msg.put(ShortMessage.TEXT, q.getString(3));
+				msg.put(ShortMessage.PERIOD, q.getString(4));
+				msg.put(ShortMessage.AT, q.getString(5));
 
 				messages.add(msg);
 			}
 			ps.close();
+			con.close();
 
 			log.log(Level.INFO, "Read {0} periodic messages!", messages.size());
-			for(Properties m: messages) {
+			for(ShortMessage m: messages) {
 				addPeriodicTimer(m);
 			}
-		} catch (SQLException e) {
+		} catch (SQLException | NamingException e) {
 			log.log(Level.SEVERE, "failed to read periodic messages!", e);
 		}
 	}
@@ -61,5 +69,4 @@ public class DbPeriodicMessageWatcher extends PeriodicMessageWatcher {
 	public void refresh() {
 		refreshPeriodicEvents();
 	}
-
 }

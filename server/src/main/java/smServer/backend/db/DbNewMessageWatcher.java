@@ -6,18 +6,25 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import smServer.Controller;
-import smServer.NewMessageWatcher;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 
-public class DbNewMessageWatcher extends NewMessageWatcher {
+import smServer.AbstractNewMessageWatcher;
+import smServer.AppContext;
+import smServer.MessageUtil;
+import smServer.ShortMessage;
+
+public class DbNewMessageWatcher extends AbstractNewMessageWatcher {
 
 	private Logger log;
 
-	public DbNewMessageWatcher(Controller controller) {
+	public DbNewMessageWatcher(AppContext controller) {
 		super(controller);
 		log = Logger.getLogger(DbNewMessageWatcher.class.getName());
 	}
@@ -31,29 +38,31 @@ public class DbNewMessageWatcher extends NewMessageWatcher {
 		log.log(Level.INFO, "Processing queued messages");
 
 		try {
-			Connection con = ConMan.getInstance().getConnection();
+			DataSource dataSource = InitialContext.doLookup("jdbc/DefaultDS");
+			Connection con = dataSource.getConnection();
 			PreparedStatement ps = con.prepareStatement("select message_id, receiver_no, message_text, send_at from sms_message_queue", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
 			ResultSet q = ps.executeQuery();
-			List<Properties> messages = new ArrayList<>();
+			List<ShortMessage> messages = new ArrayList<>();
 			while(q.next()) {
-				Properties msg = new Properties();
-				msg.put("id", String.valueOf(q.getInt(1)));
-				msg.put("receiverNo", q.getString(2));
-				msg.put("text", q.getString(3));
+				ShortMessage msg = new ShortMessage();
+				msg.put(ShortMessage.ID, String.valueOf(q.getInt(1)));
+				msg.put(ShortMessage.RECEIVER_NO, q.getString(2));
+				msg.put(ShortMessage.TEXT, q.getString(3));
 				String termin = q.getString(4);
 				if(termin != null)
-					msg.put("termin", termin);
+					msg.put(ShortMessage.TERMIN, termin);
 
 				messages.add(msg);
 				q.deleteRow();
 			}
 			ps.close();
+			con.close();
 
 			log.log(Level.INFO, "Read {0} queued messages!", messages.size());
-			for(Properties m: messages) {
-				controller.sendMessage(m);
+			for(ShortMessage m: messages) {
+				MessageUtil.sendMessage(ctx, m);
 			}
-		} catch (SQLException e) {
+		} catch (SQLException | NamingException e) {
 			log.log(Level.SEVERE, "failed to read queued messages!", e);
 		}
 
@@ -63,5 +72,4 @@ public class DbNewMessageWatcher extends NewMessageWatcher {
 	public void refresh() {
 		processQueuedMessages();
 	}
-
 }
