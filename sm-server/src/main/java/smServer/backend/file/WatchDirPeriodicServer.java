@@ -11,9 +11,9 @@ import java.util.logging.Logger;
 
 import smServer.AppContext;
 import smServer.ShortMessage;
-import smServer.AbstractPeriodicMessageWatcher;
+import smServer.AbstractPeriodicEventWatcher;
 
-public class WatchDirPeriodicServer extends AbstractPeriodicMessageWatcher {
+public class WatchDirPeriodicServer extends AbstractPeriodicEventWatcher {
 
 	private Logger log;
 
@@ -47,7 +47,7 @@ public class WatchDirPeriodicServer extends AbstractPeriodicMessageWatcher {
 				continue;
 			}
 
-			addPeriodicTimer(sm);
+			addPeriodicTimer((String)sm.remove(ShortMessage.ID), (String)sm.remove(ShortMessage.PERIOD), (String)sm.remove(ShortMessage.AT), () -> sm);
 		}
 	}
 
@@ -58,7 +58,7 @@ public class WatchDirPeriodicServer extends AbstractPeriodicMessageWatcher {
 	}
 
 	private void stopAllTimers() {
-		for(ScheduledFuture t : timerTasks.values()) {
+		for(ScheduledFuture t : eventIdToScheduledTask.values()) {
 			t.cancel(true);
 		}
 	}

@@ -2,33 +2,36 @@ package smServer;
 
 import java.util.Calendar;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import smServer.ShortMessage;
 
-public class FixedMessageTimerTask implements Runnable {
+public class EventTimerTask implements Runnable {
 
 	private Logger log;
-	private ShortMessage message;
+	private Supplier<ShortMessage> message;
 
 	private AppContext ctx;
 	private Consumer<Calendar> nextTime;
 	private Calendar calendar;
 
-	private AbstractPeriodicMessageWatcher pwm;
+	private AbstractPeriodicEventWatcher pwm;
+	private String eventId;
 
-	public FixedMessageTimerTask(AppContext context, ShortMessage msgProps, AbstractPeriodicMessageWatcher pwm) {
-		this.log = Logger.getLogger(FixedMessageTimerTask.class.getName());
-		this.message = msgProps;
+	public EventTimerTask(AppContext context, Supplier<ShortMessage> msg, AbstractPeriodicEventWatcher pwm, String eventId) {
+		this.log = Logger.getLogger(EventTimerTask.class.getName());
+		this.message = msg;
 		this.ctx = context;
 		this.pwm = pwm;
+		this.eventId = eventId;
 	}
 
 	@Override
 	public void run() {
-		log.log(Level.INFO, "Executing scheduled task {0}", message.getProperty("id"));
-		MessageUtil.sendMessage(ctx, message);
+		log.log(Level.INFO, "Executing scheduled task {0}", eventId);
+		MessageUtil.sendMessage(ctx, message.get());
 
 		if(nextTime != null) {
 			pwm.reschedule(this);
@@ -46,7 +49,11 @@ public class FixedMessageTimerTask implements Runnable {
 	public Calendar getCalendar() {
 		return calendar;
 	}
-	public ShortMessage getMessage() {
-		return message;
+//	public ShortMessage getMessage() {
+//		return message;
+//	}
+
+	public String getEventId() {
+		return eventId;
 	}
 }

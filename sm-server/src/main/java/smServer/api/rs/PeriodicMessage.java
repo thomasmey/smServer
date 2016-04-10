@@ -28,7 +28,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import smServer.AbstractPeriodicMessageWatcher;
+import smServer.AbstractPeriodicEventWatcher;
 import smServer.AppContext;
 import smServer.listener.AppListener;
 
@@ -50,7 +50,7 @@ public class PeriodicMessage {
 
 		log.log(Level.INFO, "ds={0}", dataSource);
 		Connection c = dataSource.getConnection();
-		PreparedStatement ps = c.prepareStatement("insert into sms_message_periodic (message_id, receiver_no, message_text, period, send_at)" +
+		PreparedStatement ps = c.prepareStatement("insert into sms_event_periodic (message_id, receiver_no, message_text, period, send_at)" +
 				" values (?, ?, ?, ?, ?)");
 
 		ps.setInt(1, newMessage.getInt("id"));
@@ -64,7 +64,7 @@ public class PeriodicMessage {
 		c.close();
 
 		AppContext ctx = (AppContext) sc.getAttribute(AppListener.ATTRIBUTE_CONTEXT);
-		AbstractPeriodicMessageWatcher pwm = (AbstractPeriodicMessageWatcher) ctx.get(AppContext.PMW);
+		AbstractPeriodicEventWatcher pwm = (AbstractPeriodicEventWatcher) ctx.get(AppContext.PMW);
 		pwm.refresh();
 
 		return Response.ok().build();
@@ -74,7 +74,7 @@ public class PeriodicMessage {
 	public Response delete(@QueryParam("id") int id, @Context ServletContext sc) throws SQLException {
 
 		Connection c = dataSource.getConnection();
-		PreparedStatement ps = c.prepareStatement("delete from sms_message_periodic where message_id = ?");
+		PreparedStatement ps = c.prepareStatement("delete from sms_event_periodic where message_id = ?");
 		ps.setInt(1, id);
 		ps.execute();
 
@@ -82,7 +82,7 @@ public class PeriodicMessage {
 		c.close();
 
 		AppContext ctx = (AppContext) sc.getAttribute(AppListener.ATTRIBUTE_CONTEXT);
-		AbstractPeriodicMessageWatcher pwm = (AbstractPeriodicMessageWatcher) ctx.get(AppContext.PMW);
+		AbstractPeriodicEventWatcher pwm = (AbstractPeriodicEventWatcher) ctx.get(AppContext.PMW);
 		pwm.refresh();
 
 		return Response.ok().build();
@@ -93,7 +93,7 @@ public class PeriodicMessage {
 	public Response getAll(@Context ServletContext sc) {
 		AppContext ctx = (AppContext) sc.getAttribute(AppListener.ATTRIBUTE_CONTEXT);
 
-		AbstractPeriodicMessageWatcher pwm = (AbstractPeriodicMessageWatcher) ctx.get(AppContext.PMW);
+		AbstractPeriodicEventWatcher pwm = (AbstractPeriodicEventWatcher) ctx.get(AppContext.PMW);
 		List<Calendar> dates = pwm.getTimerTasks();
 
 		JsonArrayBuilder ab = Json.createArrayBuilder();

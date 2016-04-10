@@ -3,6 +3,7 @@ package smServer.listener;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
 import java.util.Hashtable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,7 +14,7 @@ import javax.servlet.annotation.WebListener;
 
 import smServer.AbstractNewMessageWatcher;
 import smServer.AppContext;
-import smServer.AbstractPeriodicMessageWatcher;
+import smServer.AbstractPeriodicEventWatcher;
 import smServer.PropsReader;
 import smServer.api.ShortMessageSender;
 import smServer.backend.db.DbPropsReader;
@@ -59,7 +60,8 @@ public class AppListener implements ServletContextListener {
 	public void start() throws Exception {
 
 		Hashtable<String, String> appProps = loadAppProps();
-		ctx.transfer(appProps, AppContext.SENDER_NO);
+		ctx.put(AppContext.SENDER_NO, new BigDecimal(appProps.get(AppContext.SENDER_NO)));
+
 		ShortMessageSender sms = new InnoApi(appProps.get("username"), appProps.get("password"));
 
 		// start sending threads
@@ -81,7 +83,7 @@ public class AppListener implements ServletContextListener {
 		nmwThread.start();
 		ctx.put(AppContext.NMW_THREAD, nmwThread);
 
-		AbstractPeriodicMessageWatcher pmw = getInstance(appProps.get("periodicMessageWatcherClass"));
+		AbstractPeriodicEventWatcher pmw = getInstance(appProps.get("periodicEventWatcherClass"));
 		ctx.put(AppContext.PMW, pmw);
 
 		Thread pmwThread = new Thread(pmw);

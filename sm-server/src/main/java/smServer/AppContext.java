@@ -24,7 +24,7 @@ public class AppContext extends HashMap<String, Object> {
 		log = Logger.getLogger(AppContext.class.getName());
 	}
 
-	public void transfer(Hashtable<String, String> props, String p) {
-		this.put(p, props.get(p));
+	public void transfer(Hashtable<String, String> props, String key) {
+		this.put(key, props.get(key));
 	}
 }

@@ -4,11 +4,11 @@
 
 	<parent>
 		<groupId>de.m3y3r.smServer</groupId>
-		<artifactId>parent</artifactId>
+		<artifactId>sm-parent</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>server</artifactId>
+	<artifactId>sm-server</artifactId>
 	<packaging>war</packaging>
 
 	<name>Short message WebApp</name>
@@ -30,11 +30,4 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-	<build>
-		<plugins>
-			<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-jar-plugin</artifactId> 
-				<configuration> <useDefaultManifestFile>true</useDefaultManifestFile> </configuration> 
-				</plugin> -->
-		</plugins>
-	</build>
 </project>

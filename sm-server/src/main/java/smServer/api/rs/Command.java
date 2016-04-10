@@ -19,7 +19,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import smServer.AbstractPeriodicMessageWatcher;
+import smServer.AbstractPeriodicEventWatcher;
 import smServer.AppContext;
 import smServer.Refreshable;
 import smServer.listener.AppListener;
@@ -52,7 +52,7 @@ public class Command {
 		}
 		case "listPeriodic":
 		{
-			AbstractPeriodicMessageWatcher pwm = (AbstractPeriodicMessageWatcher) ctx.get(AppContext.PMW);
+			AbstractPeriodicEventWatcher pwm = (AbstractPeriodicEventWatcher) ctx.get(AppContext.PMW);
 			List<Calendar> dates = pwm.getTimerTasks();
 			JsonArrayBuilder ab = Json.createArrayBuilder();
 			DateFormat df = DateFormat.getDateInstance();

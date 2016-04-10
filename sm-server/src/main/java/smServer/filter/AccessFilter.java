@@ -1,9 +1,6 @@
 package smServer.filter;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Base64;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

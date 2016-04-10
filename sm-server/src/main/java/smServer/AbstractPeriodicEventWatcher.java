@@ -1,7 +1,5 @@
 package smServer;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,53 +9,50 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import smServer.ShortMessage;
 
-public abstract class AbstractPeriodicMessageWatcher implements Runnable, Refreshable {
+public abstract class AbstractPeriodicEventWatcher implements Runnable, Refreshable {
 
 	protected AppContext ctx;
-	protected Map<String, ScheduledFuture> timerTasks;
-	protected Map<String, FixedMessageTimerTask> timerTasksObj;
+	protected Map<String, ScheduledFuture> eventIdToScheduledTask;
+	protected Map<String, EventTimerTask> eventIdToTimerTask;
 	protected ScheduledExecutorService timer;
 	private Logger log;
 
-	public AbstractPeriodicMessageWatcher(AppContext ctx) {
+	public AbstractPeriodicEventWatcher(AppContext ctx) {
 		this.ctx = ctx;
-		timerTasks = Collections.synchronizedMap(new HashMap<>());
-		timerTasksObj = Collections.synchronizedMap(new HashMap<>());
+		eventIdToScheduledTask = Collections.synchronizedMap(new HashMap<>());
+		eventIdToTimerTask = Collections.synchronizedMap(new HashMap<>());
 		timer = Executors.newScheduledThreadPool(1);
-		log = Logger.getLogger(AbstractPeriodicMessageWatcher.class.getName());
+		log = Logger.getLogger(AbstractPeriodicEventWatcher.class.getName());
 	}
 
 	public void stop() {
 		timer.shutdown();
 	}
 
-	protected void addPeriodicTimer(ShortMessage msg) {
+	protected void addPeriodicTimer(String eventId, String period, String at, Supplier<ShortMessage> supplier) {
 
-		msg.remove(ShortMessage.TERMIN);
-
-		String timerId = msg.getProperty(ShortMessage.ID);
-		String period = msg.getProperty(ShortMessage.PERIOD);
-		String at = msg.getProperty(ShortMessage.AT);
-		if(timerId == null || period == null || at == null) {
+		if(eventId == null || period == null || at == null) {
 			log.log(Level.SEVERE, "invalid periodic format! id, at and period mustn't be null!");
 			return;
 		}
 
-		FixedMessageTimerTask timerTask = new FixedMessageTimerTask(ctx, msg, this);
+		EventTimerTask timerTask = new EventTimerTask(ctx, supplier, this, eventId);
 
-		if(timerTasks.containsKey(timerId)) {
-			ScheduledFuture<?> tt = timerTasks.get(timerId);
+		// does an still active task is scheduled for this event id?
+		if(eventIdToScheduledTask.containsKey(eventId)) {
+			ScheduledFuture<?> tt = eventIdToScheduledTask.get(eventId);
 			tt.cancel(false);
-			timerTasks.remove(timerId);
+			eventIdToScheduledTask.remove(eventId);
 		}
 
-		timerTasksObj.put(timerId, timerTask);
+		eventIdToTimerTask.put(eventId, timerTask);
 
 		Calendar cal = Calendar.getInstance();
 		ScheduledFuture<?> future = null;
@@ -139,31 +134,30 @@ public abstract class AbstractPeriodicMessageWatcher implements Runnable, Refres
 			break;
 		}
 
-		timerTasks.put(timerId, future);
+		eventIdToScheduledTask.put(eventId, future);
 	}
 
-	private long getDelay(FixedMessageTimerTask timerTask) {
+	private long getDelay(EventTimerTask timerTask) {
 		Calendar cc = Calendar.getInstance();
 		long delay = timerTask.getCalendar().getTimeInMillis() - cc.getTimeInMillis();
-//		System.out.println("delay= " + delay);
 		if(delay < 0)
 			timerTask.applyNextTime();
 
 		delay = timerTask.getCalendar().getTimeInMillis() - cc.getTimeInMillis();
 		assert delay > 0;
-		System.out.println("delay= " + delay);
+		log.log(Level.INFO, "delay={0}", delay);
 		return delay;
 	}
 
-	public void reschedule(FixedMessageTimerTask timerTask) {
+	public void reschedule(EventTimerTask timerTask) {
 		timerTask.applyNextTime();
 		long delay = getDelay(timerTask);
 		ScheduledFuture future = timer.schedule(timerTask, delay, TimeUnit.MILLISECONDS);
-		timerTasks.put(timerTask.getMessage().getProperty(ShortMessage.ID), future);
+		eventIdToScheduledTask.put(timerTask.getEventId(), future);
 	}
 
 	public List<Calendar> getTimerTasks() {
-		List<Calendar> dates = timerTasksObj.values().stream().map(FixedMessageTimerTask::getCalendar).sorted().collect(Collectors.toList());
+		List<Calendar> dates = eventIdToTimerTask.values().stream().map(EventTimerTask::getCalendar).sorted().collect(Collectors.toList());
 		return dates;
 	}
 }
