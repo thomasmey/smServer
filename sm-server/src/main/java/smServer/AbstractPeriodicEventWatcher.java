@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,9 +66,7 @@ public abstract class AbstractPeriodicEventWatcher implements Runnable, Refresha
 				int minute = Integer.valueOf(at);
 				cal.set(Calendar.MINUTE, minute);
 
-				timerTask.setReschedule(cal, (c) -> { c.add(Calendar.HOUR_OF_DAY, 1); } );
-
-				long delay = getDelay(timerTask);
+				long delay = getDelay(cal, c -> c.add(Calendar.HOUR_OF_DAY, 1));
 				future = timer.scheduleAtFixedRate(timerTask, delay, timerPeriod, TimeUnit.MILLISECONDS);
 			}
 			break;
@@ -75,15 +74,14 @@ public abstract class AbstractPeriodicEventWatcher implements Runnable, Refresha
 			// at = 14:00
 			{
 				long timerPeriod = TimeUnit.DAYS.toMillis(1);
+
 				String[] hm = at.split(":");
 				int hour = Integer.valueOf(hm[0]);
 				int minute = Integer.valueOf(hm[1]);
 				cal.set(Calendar.HOUR_OF_DAY, hour);
 				cal.set(Calendar.MINUTE, minute);
 
-				timerTask.setReschedule(cal, (c) -> { c.add(Calendar.DAY_OF_MONTH, 1); } );
-
-				long delay = getDelay(timerTask);
+				long delay = getDelay(cal, c ->  c.add(Calendar.DAY_OF_MONTH, 1));
 				future = timer.scheduleAtFixedRate(timerTask, delay, timerPeriod, TimeUnit.MILLISECONDS);
 			}
 			break;
@@ -137,27 +135,36 @@ public abstract class AbstractPeriodicEventWatcher implements Runnable, Refresha
 		eventIdToScheduledTask.put(eventId, future);
 	}
 
-	private long getDelay(EventTimerTask timerTask) {
+	private long getDelay(Calendar cal, Consumer<Calendar> nextTime) {
 		Calendar cc = Calendar.getInstance();
-		long delay = timerTask.getCalendar().getTimeInMillis() - cc.getTimeInMillis();
+		long delay = cal.getTimeInMillis() - cc.getTimeInMillis();
 		if(delay < 0)
-			timerTask.applyNextTime();
+			nextTime.accept(cal);
 
-		delay = timerTask.getCalendar().getTimeInMillis() - cc.getTimeInMillis();
+		delay = cal.getTimeInMillis() - cc.getTimeInMillis();
 		assert delay > 0;
 		log.log(Level.INFO, "delay={0}", delay);
 		return delay;
 	}
 
+	private long getDelay(EventTimerTask timerTask) {
+		return getDelay(timerTask.getCalendar(), timerTask.getReschedule());
+	}
+
 	public void reschedule(EventTimerTask timerTask) {
 		timerTask.applyNextTime();
 		long delay = getDelay(timerTask);
+
 		ScheduledFuture future = timer.schedule(timerTask, delay, TimeUnit.MILLISECONDS);
 		eventIdToScheduledTask.put(timerTask.getEventId(), future);
 	}
 
 	public List<Calendar> getTimerTasks() {
-		List<Calendar> dates = eventIdToTimerTask.values().stream().map(EventTimerTask::getCalendar).sorted().collect(Collectors.toList());
+		List<Calendar> dates = eventIdToTimerTask.values().stream()
+				.filter(tt -> { if(tt.getCalendar() == null) return false; else return true;} )
+				.map(EventTimerTask::getCalendar)
+				.sorted()
+				.collect(Collectors.toList());
 		return dates;
 	}
 }

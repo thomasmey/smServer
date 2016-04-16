@@ -31,11 +31,11 @@ public class EventTimerTask implements Runnable {
 	@Override
 	public void run() {
 		log.log(Level.INFO, "Executing scheduled task {0}", eventId);
-		MessageUtil.sendMessage(ctx, message.get());
 
-		if(nextTime != null) {
-			pwm.reschedule(this);
-		}
+		ShortMessage m = message.get();
+		if(m != null) MessageUtil.sendMessage(ctx, m);
+
+		if(nextTime != null) pwm.reschedule(this);
 	}
 
 	public void setReschedule(Calendar cal, Consumer<Calendar> nextTime) {
@@ -49,11 +49,11 @@ public class EventTimerTask implements Runnable {
 	public Calendar getCalendar() {
 		return calendar;
 	}
-//	public ShortMessage getMessage() {
-//		return message;
-//	}
-
 	public String getEventId() {
 		return eventId;
+	}
+
+	public Consumer<Calendar> getReschedule() {
+		return nextTime;
 	}
 }

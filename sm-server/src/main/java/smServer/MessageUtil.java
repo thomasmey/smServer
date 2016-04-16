@@ -9,6 +9,8 @@ import smServer.api.ShortMessageSender;
 public class MessageUtil {
 
 	public static void sendMessage(AppContext ctx, ShortMessage msg) {
+		if(msg == null) return;
+
 		String rnSplit[] = msg.getProperty(ShortMessage.RECEIVER_NO).split(",");
 		String textMessage = msg.getProperty(ShortMessage.TEXT);
 		String sendDate = msg.getProperty(ShortMessage.TERMIN);

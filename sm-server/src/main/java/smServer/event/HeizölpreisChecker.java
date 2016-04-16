@@ -41,6 +41,9 @@ public class HeizölpreisChecker implements Supplier<ShortMessage> {
 		String page = getPage();
 		Number preis = extract(page);
 		Number lowestPreis = getLowestPreis();
+
+		Logger.getLogger(HeizölpreisChecker.class.getName()).log(Level.INFO, "Current Preis {0} - Lowest Preis {1}", new Object[] {preis, lowestPreis});
+
 		if(preis.doubleValue() < lowestPreis.doubleValue()) {
 			updateEventData(preis);
 			String templateText = (String) this.sm.get(ShortMessage.TEXT);
